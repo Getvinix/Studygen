@@ -1,0 +1,6 @@
+{
+  "name": "OpenLearn - Free Study Notes & Exam Generator",
+  "description": "Free learning platform to upload problematic questions, generate simple revision notes with outlined diagrams, and produce standard exams in PDF format. 100% free, no login or credits required.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
