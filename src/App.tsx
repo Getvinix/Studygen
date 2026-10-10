@@ -16,6 +16,7 @@ import {
   WHATSAPP_LINK,
   TELEGRAM_LINK,
 } from './components/SocialIcons';
+import { generateNotesApi, generateExamApi } from './utils/apiClient';
 
 const STORAGE_NOTES_KEY = 'openlearn_saved_notes_v1';
 const STORAGE_EXAMS_KEY = 'openlearn_saved_exams_v1';
@@ -98,13 +99,7 @@ export default function App() {
     setIsLoading(true);
     setLoadingMessage(`Synthesizing simple notes & diagrams for ${params.gradeLevel}...`);
     try {
-      const res = await fetch('/api/generate-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate notes');
+      const data = await generateNotesApi(params);
 
       const fullNote: SimpleNote = {
         ...data,
@@ -116,7 +111,7 @@ export default function App() {
       setActiveTab('notes');
       showToast(`Notes generated for ${params.gradeLevel}!`);
     } catch (err: any) {
-      alert(err.message || 'Error generating notes');
+      showToast(err.message || 'Error generating notes');
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
@@ -134,20 +129,14 @@ export default function App() {
     setIsLoading(true);
     setLoadingMessage(`Compiling standardized exam paper for ${params.gradeLevel}...`);
     try {
-      const res = await fetch('/api/generate-exam', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: params.question.slice(0, 80),
-          baseQuestion: params.question,
-          subject: params.subject,
-          gradeLevel: params.gradeLevel,
-          difficulty: params.difficulty,
-          examType: params.examType,
-        }),
+      const data = await generateExamApi({
+        topic: params.question.slice(0, 80),
+        baseQuestion: params.question,
+        subject: params.subject,
+        gradeLevel: params.gradeLevel,
+        difficulty: params.difficulty,
+        examType: params.examType,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate exam');
 
       const fullExam: StandardExam = {
         ...data,
@@ -159,7 +148,7 @@ export default function App() {
       setActiveTab('exam');
       showToast(`Standard exam paper generated for ${params.gradeLevel}!`);
     } catch (err: any) {
-      alert(err.message || 'Error generating exam');
+      showToast(err.message || 'Error generating exam');
     } finally {
       setIsLoading(false);
       setLoadingMessage('');

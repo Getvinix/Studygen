@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PenTool, Sparkles, Download, Copy, Check, Search, BookOpen, Layers } from 'lucide-react';
 import { GeneratedDiagramItem } from '../types';
 import { DiagramRenderer } from './DiagramRenderer';
+import { generateDiagramApi } from '../utils/apiClient';
 
 interface DiagramStudioProps {
   onSaveDiagram?: (diagram: GeneratedDiagramItem) => void;
@@ -56,17 +57,10 @@ export const DiagramStudio: React.FC<DiagramStudioProps> = ({ onSaveDiagram }) =
     setErrorMessage(null);
 
     try {
-      const res = await fetch('/api/generate-diagram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: textPrompt,
-          subject: customSubject || subject,
-        }),
+      const data = await generateDiagramApi({
+        prompt: textPrompt,
+        subject: customSubject || subject,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate diagram');
 
       const newItem: GeneratedDiagramItem = {
         id: `diag-${Date.now()}`,

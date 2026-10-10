@@ -26,6 +26,7 @@ import {
   getWhatsAppShareLink,
   getTelegramShareLink,
 } from './SocialIcons';
+import { analyzeQuestionApi } from '../utils/apiClient';
 
 interface QuestionUploaderProps {
   onGenerateNotes: (data: {
@@ -137,20 +138,14 @@ export const QuestionUploader: React.FC<QuestionUploaderProps> = ({
     setErrorMessage(null);
     setIsAnalyzing(true);
     try {
-      const res = await fetch('/api/analyze-question', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: questionText.trim(),
-          imageBase64: imagePreview,
-          mimeType: imageMime,
-          subject: effectiveSubject,
-          gradeLevel,
-          difficulty,
-        }),
+      const data = await analyzeQuestionApi({
+        questionText: questionText.trim(),
+        imageBase64: imagePreview,
+        mimeType: imageMime,
+        subject: effectiveSubject,
+        gradeLevel,
+        difficulty,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to analyze question');
       setAnalysisResult(data);
       if (data.extractedQuestion && !questionText) {
         setQuestionText(data.extractedQuestion);

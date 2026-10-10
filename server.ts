@@ -3,6 +3,12 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import {
+  generateCurriculumAnalysis,
+  generateCurriculumNotes,
+  generateCurriculumExam,
+  generateCurriculumDiagram,
+} from './src/utils/curriculumFallbacks.js';
 
 dotenv.config();
 
@@ -42,6 +48,43 @@ function cleanSvg(svg: string): string {
     cleaned = cleaned.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
   }
   return cleaned;
+}
+
+// Robust JSON parse helper that handles markdown code fences, backticks, and extra text
+function safeParseJson<T>(raw: string | undefined | null, fallback: T): T {
+  if (!raw || typeof raw !== 'string') return fallback;
+  let text = raw.trim();
+
+  // Strip markdown code fences
+  if (text.startsWith('```')) {
+    text = text.replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+  }
+
+  // Direct parse attempt
+  try {
+    return JSON.parse(text);
+  } catch (err1) {
+    // Attempt extracting outermost { ... }
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+      } catch (err2) {}
+    }
+
+    // Attempt extracting outermost [ ... ]
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket > firstBracket) {
+      try {
+        return JSON.parse(text.substring(firstBracket, lastBracket + 1));
+      } catch (err3) {}
+    }
+
+    console.warn('[server.ts] safeParseJson could not parse JSON, using fallback.');
+    return fallback;
+  }
 }
 
 // 1. Analyze Problematic Question / OCR & Stumbling Block Detection
@@ -110,14 +153,26 @@ Extract and analyze:
       }
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const fallbackData = generateCurriculumAnalysis({
+      questionText,
+      subject,
+      gradeLevel,
+      difficulty,
+    });
+    const parsed = safeParseJson(response.text, fallbackData);
     if (!parsed.gradeLevel && gradeLevel) {
       parsed.gradeLevel = gradeLevel;
     }
     return res.json(parsed);
   } catch (error: any) {
-    console.error('Error analyzing question:', error);
-    return res.status(500).json({ error: error.message || 'Failed to analyze question' });
+    console.error('Error analyzing question, serving curriculum fallback:', error);
+    const fallback = generateCurriculumAnalysis({
+      questionText: req.body?.questionText,
+      subject: req.body?.subject,
+      gradeLevel: req.body?.gradeLevel,
+      difficulty: req.body?.difficulty,
+    });
+    return res.json(fallback);
   }
 });
 
@@ -280,7 +335,14 @@ Create the complete structured notes calibrated specifically for ${gradeLevel ||
       }
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const fallbackNotes = generateCurriculumNotes({
+      question,
+      subject,
+      topic,
+      difficulty,
+      gradeLevel,
+    });
+    const parsed = safeParseJson(response.text, fallbackNotes);
     if (!parsed.gradeLevel && gradeLevel) {
       parsed.gradeLevel = gradeLevel;
     }
@@ -289,8 +351,15 @@ Create the complete structured notes calibrated specifically for ${gradeLevel ||
     }
     return res.json(parsed);
   } catch (error: any) {
-    console.error('Error generating notes:', error);
-    return res.status(500).json({ error: error.message || 'Failed to generate notes' });
+    console.error('Error generating notes, serving curriculum fallback:', error);
+    const fallback = generateCurriculumNotes({
+      question: req.body?.question || 'Standard Question',
+      subject: req.body?.subject,
+      topic: req.body?.topic,
+      difficulty: req.body?.difficulty,
+      gradeLevel: req.body?.gradeLevel,
+    });
+    return res.json(fallback);
   }
 });
 
@@ -461,7 +530,14 @@ Return full JSON representation calibrated for ${gradeLevel} and ${subject} unde
       }
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const fallbackExam = generateCurriculumExam({
+      question: baseQuestion || topic,
+      subject,
+      gradeLevel,
+      difficulty,
+      examType,
+    });
+    const parsed = safeParseJson(response.text, fallbackExam);
     if (!parsed.gradeLevel && gradeLevel) {
       parsed.gradeLevel = gradeLevel;
     }
@@ -481,8 +557,15 @@ Return full JSON representation calibrated for ${gradeLevel} and ${subject} unde
 
     return res.json(parsed);
   } catch (error: any) {
-    console.error('Error generating exam:', error);
-    return res.status(500).json({ error: error.message || 'Failed to generate exam' });
+    console.error('Error generating exam, serving curriculum fallback:', error);
+    const fallback = generateCurriculumExam({
+      question: req.body?.baseQuestion || req.body?.topic,
+      subject: req.body?.subject,
+      gradeLevel: req.body?.gradeLevel,
+      difficulty: req.body?.difficulty,
+      examType: req.body?.examType,
+    });
+    return res.json(fallback);
   }
 });
 
@@ -532,14 +615,22 @@ Guidelines:
       }
     });
 
-    const parsed = JSON.parse(aiResponse.text || '{}');
+    const fallbackDiag = generateCurriculumDiagram({
+      prompt,
+      subject,
+    });
+    const parsed = safeParseJson(aiResponse.text, fallbackDiag);
     if (parsed.svgCode) {
       parsed.svgCode = cleanSvg(parsed.svgCode);
     }
     return res.json(parsed);
   } catch (error: any) {
-    console.error('Error generating diagram:', error);
-    return res.status(500).json({ error: error.message || 'Failed to generate diagram' });
+    console.error('Error generating diagram, serving curriculum fallback:', error);
+    const fallback = generateCurriculumDiagram({
+      prompt: req.body?.prompt || 'Outlined Concept Diagram',
+      subject: req.body?.subject,
+    });
+    return res.json(fallback);
   }
 });
 
@@ -559,9 +650,16 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server listening on http://0.0.0.0:${PORT}`);
-  });
+  // Only start listening when not running inside a serverless platform (e.g. Vercel)
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server listening on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
