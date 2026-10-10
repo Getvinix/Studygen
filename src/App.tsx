@@ -104,6 +104,7 @@ export default function App() {
       const fullNote: SimpleNote = {
         ...data,
         id: `note-${Date.now()}`,
+        subject: params.subject || data.subject,
         gradeLevel: params.gradeLevel || data.gradeLevel,
         createdAt: new Date().toISOString(),
       };
@@ -141,6 +142,7 @@ export default function App() {
       const fullExam: StandardExam = {
         ...data,
         id: `exam-${Date.now()}`,
+        subject: params.subject || data.subject,
         gradeLevel: params.gradeLevel || data.gradeLevel,
         createdAt: new Date().toISOString(),
       };

@@ -108,26 +108,31 @@ app.post('/api/analyze-question', async (req, res) => {
       });
     }
 
-    const prompt = `You are an expert educator and diagnostic tutor. Analyze this problematic student question carefully.
-${questionText ? `User Question Text / Notes:\n"""\n${questionText}\n"""\n` : ''}
-${subject ? `Target Subject: ${subject}` : ''}
-${gradeLevel ? `Target Grade Level: ${gradeLevel} (Calibrate your analysis to this specific educational level, ranging from Grade 1 through Higher Tertiary / University)` : ''}
-${difficulty ? `Difficulty Level Context: ${difficulty}` : ''}
+    const prompt = `You are an expert academic educator and diagnostic tutor.
+You MUST strictly analyze the student's question under the user's SELECTED SUBJECT: "${subject || 'General'}" and TARGET GRADE LEVEL: "${gradeLevel || 'Secondary'}".
+If the subject is Computer Science, all concepts, topics, and analysis MUST strictly be about Computer Science (e.g. algorithms, data structures, programming, logic, computer systems, or computational thinking).
+NEVER output generic lever, physics, or arithmetic topics when another subject like Computer Science is selected.
+
+User Question Text / Concept / Problematic Word:
+"""
+${questionText || 'Analyze the concept or image provided'}
+"""
+${difficulty ? `Difficulty Context: ${difficulty}` : ''}
 
 Extract and analyze:
-1. Full extracted question statement (transcribe accurately from image if provided, with all numbers, variables, and context).
-2. The core academic subject.
-3. The specific topic and sub-topic.
-4. Estimated difficulty level appropriate for ${gradeLevel || 'the student'}.
+1. Full extracted question statement (preserve all coding syntax, algorithmic terms, or technical terms).
+2. The core academic subject (MUST be "${subject || 'Computer Science'}").
+3. The specific topic and sub-topic within ${subject}.
+4. Estimated difficulty level appropriate for ${gradeLevel}.
 5. Core concept tested.
-6. The primary "Stumbling Block" / Why students struggle with this (explain at the comprehension level of ${gradeLevel || 'the student'}).
-7. Key formulas, laws, or theorems needed to solve it (if Grade 1-5, simple rules/operations; if Tertiary, formal equations).
-8. What kind of outlined schematic diagram would make this visual and immediately easy to comprehend.`;
+6. The primary "Stumbling Block" / Why students struggle with this specific topic in ${subject}.
+7. Key formulas, pseudocode rules, theorems, or syntax rules needed to solve or understand it.
+8. What kind of outlined schematic diagram (e.g., flowcharts, tree structures, call stacks, memory layouts, logic circuits) would make this immediately clear.`;
 
     parts.push({ text: prompt });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: { parts },
       config: {
         responseMimeType: 'application/json',
@@ -160,6 +165,9 @@ Extract and analyze:
       difficulty,
     });
     const parsed = safeParseJson(response.text, fallbackData);
+    if (subject) {
+      parsed.subject = subject;
+    }
     if (!parsed.gradeLevel && gradeLevel) {
       parsed.gradeLevel = gradeLevel;
     }
@@ -230,15 +238,20 @@ Target Grade Level: ${gradeLevel || 'Junior School'}
 Target Subject: ${subject || 'General'}
 Difficulty Level Context: ${difficulty || 'Standard'}
 
-Question / Concept:
+CRITICAL SUBJECT DISCIPLINE:
+You MUST create content strictly for the subject "${subject}".
+For example, if the subject is "Computer Science", you must write about Computer Science (algorithms, code concepts, computational thinking, data structures), NOT physics, biology, or generic levers.
+The Outlined Vector Diagram MUST illustrate this exact concept in ${subject} (e.g. for Computer Science: flowchart, binary tree, call stack, logic gate, or array memory model).
+
+Question / Problematic Word / Concept:
 """
 ${question}
 """
 
-Create the complete structured notes calibrated specifically for ${gradeLevel || 'the student'} under the appropriate CBE Kenyan or Worldwide Higher Education curriculum, including the outlined vector SVG diagram.`;
+Create the complete structured notes calibrated specifically for ${gradeLevel || 'the student'} in ${subject}, including the subject-specific outlined vector SVG diagram.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: prompt,
       config: {
         systemInstruction,
@@ -343,6 +356,9 @@ Create the complete structured notes calibrated specifically for ${gradeLevel ||
       gradeLevel,
     });
     const parsed = safeParseJson(response.text, fallbackNotes);
+    if (subject) {
+      parsed.subject = subject;
+    }
     if (!parsed.gradeLevel && gradeLevel) {
       parsed.gradeLevel = gradeLevel;
     }
@@ -427,10 +443,14 @@ Difficulty: ${difficulty}
 Target Time: ${targetDuration} minutes
 Total Marks: ${totalMarks} marks
 
-Return full JSON representation calibrated for ${gradeLevel} and ${subject} under CBE Kenyan or Worldwide Higher Education assessment standards. Ensure any generated SVG diagram is valid, clean, and outlined.`;
+CRITICAL SUBJECT SPECIFICITY:
+Every single question, MCQ, structured question, diagram, and marking scheme MUST be strictly about the chosen subject: "${subject}" and topic: "${topic || baseQuestion}".
+If the subject is Computer Science, all questions must be Computer Science questions (pseudocode, algorithms, data structures, computer hardware, logic gates, networking, computational logic).
+Do NOT include physics, chemistry, or unrelated subjects.
+Any Outlined SVG diagram included in Section B or C MUST be a subject diagram (e.g. for Computer Science: flowchart, binary search tree, logic circuit, memory stack).`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: prompt,
       config: {
         systemInstruction,
@@ -538,6 +558,9 @@ Return full JSON representation calibrated for ${gradeLevel} and ${subject} unde
       examType,
     });
     const parsed = safeParseJson(response.text, fallbackExam);
+    if (subject) {
+      parsed.subject = subject;
+    }
     if (!parsed.gradeLevel && gradeLevel) {
       parsed.gradeLevel = gradeLevel;
     }
@@ -587,8 +610,8 @@ Guidelines:
 - Make it aesthetically pleasing, accurate, and easy for students to understand.`;
 
     const aiResponse = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: `Create an outlined technical SVG diagram illustrating:\n${prompt}\nSubject: ${subject || 'General STEM'}.`,
+      model: 'gemini-3.1-flash-lite',
+      contents: `Create an outlined technical SVG diagram illustrating:\n${prompt}\nSubject: ${subject || 'General STEM'}. Ensure the diagram strictly represents this subject and concept.`,
       config: {
         systemInstruction,
         responseMimeType: 'application/json',

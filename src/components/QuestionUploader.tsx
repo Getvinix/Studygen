@@ -150,12 +150,6 @@ export const QuestionUploader: React.FC<QuestionUploaderProps> = ({
       if (data.extractedQuestion && !questionText) {
         setQuestionText(data.extractedQuestion);
       }
-      if (data.subject) {
-        setSubject(data.subject);
-      }
-      if (data.gradeLevel) {
-        setGradeLevel(data.gradeLevel);
-      }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error diagnosing question');
     } finally {
@@ -176,7 +170,7 @@ export const QuestionUploader: React.FC<QuestionUploaderProps> = ({
       subject: effectiveSubject,
       gradeLevel,
       difficulty,
-      topic: analysisResult?.topic,
+      topic: analysisResult?.topic || (text ? text.slice(0, 60) : undefined),
     });
   };
 
@@ -337,9 +331,9 @@ export const QuestionUploader: React.FC<QuestionUploaderProps> = ({
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-sky-600" />
-                Problem Statement / Question
+                Problem Statement, Tricky Concept, or Problematic Word
               </label>
-              <span className="text-xs text-slate-500">Paste text, word problem, or equations</span>
+              <span className="text-xs text-slate-500">Paste question, word problem, or problematic word</span>
             </div>
 
             {/* Quick Symbol Toolbar */}
@@ -365,7 +359,7 @@ export const QuestionUploader: React.FC<QuestionUploaderProps> = ({
             <textarea
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              placeholder={`Enter any question for ${gradeLevel}... e.g. "If a train leaves at 3:15..." or "Calculate the derivative of f(x)..." or "Explain the role of chloroplasts in photosynthesis..."`}
+              placeholder={`Enter your problematic word, tricky concept, or exam question in ${effectiveSubject}... e.g. "Deadlock Coffman conditions", "SQL Normalization 3NF", "Inheritance and Polymorphism", "TCP vs UDP", "Binary Search"...`}
               rows={8}
               className="w-full flex-1 p-4 rounded-xl border border-slate-300 font-mono text-sm leading-relaxed text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-sky-500 focus:outline-hidden resize-none"
             />
